@@ -1,36 +1,19 @@
-# cistercian-time-and-date
+# Cistercian Time & Date
 
-A Pebble watchapp/watchface written in C using the Pebble SDK.
+A Pebble watchface written in C using the Pebble SDK.
+
+displays the time & date using [Cistercian numerals](https://en.wikipedia.org/wiki/Cistercian_numerals)
+
+![screenshot](./assets/screenshot.png)
 
 ## Building & running
 
 ```sh
-pebble build                          # build for all targetPlatforms
+pebble build                          # build for target platform
 pebble install --emulator emery       # install on the emery emulator
-pebble install --phone <ip>           # install to a paired phone
+pebble install --cloudpebble          # install to watch using the Pebble Cloud
 ```
 
 ## Target platforms
 
-`targetPlatforms` in `package.json` controls which watches you build for. The
-modern Pebble hardware is **emery** (Pebble Time 2), **gabbro** (Pebble Round
-2), and **flint** (Pebble 2 Duo); the original Pebble platforms (aplite,
-basalt, chalk, diorite) are included by default for backwards compatibility.
-
-## Project layout
-
-```
-src/c/           C source for the watchapp
-src/pkjs/        PebbleKit JS (phone-side) source, if any
-worker_src/c/    Background worker source, if any
-resources/       Images, fonts, and other bundled resources
-package.json     Project metadata (UUID, platforms, resources, message keys)
-wscript          Build rules — usually no need to edit
-```
-
-By default this project is configured as a watchapp. To make it a watchface,
-set `pebble.watchapp.watchface` to `true` in `package.json`.
-
-## Documentation
-
-Full SDK docs, tutorials, and API reference: <https://developer.repebble.com>
+tested only on the `emery` platform (Pebble Time 2), but it might work well with other platforms.

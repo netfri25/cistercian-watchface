@@ -138,7 +138,7 @@ static void draw_time(Layer* layer, GContext* ctx) {
     struct tm* local_now = localtime(&now_unix);
 
     GRect bounds = layer_get_bounds(layer);
-    int16_t const padding = 15; // TODO: make configurable
+    int16_t const padding = 25; // TODO: make configurable
 
     bounds.origin.x += padding;
     bounds.origin.y += padding;
@@ -146,9 +146,9 @@ static void draw_time(Layer* layer, GContext* ctx) {
     bounds.size.h -= padding * 2;
 
     // TODO: make configurable
-    graphics_context_set_antialiased(ctx, false);
+    graphics_context_set_antialiased(ctx, true);
     graphics_context_set_stroke_color(ctx, GColorBlack);
-    graphics_context_set_stroke_width(ctx, 5);
+    graphics_context_set_stroke_width(ctx, 6);
 
     numeral_t numeral = local_now->tm_min + local_now->tm_hour * 100;
     draw_numeral(ctx, bounds, numeral);

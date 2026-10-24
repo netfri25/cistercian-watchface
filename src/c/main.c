@@ -1,7 +1,7 @@
 #include <pebble.h>
 
 // TODO: make configurable
-#define BACKGROUND_COLOR GColorLightGray
+#define BACKGROUND_COLOR GColorWhite
 #define STROKE_COLOR GColorBlack
 #define PADDING 25
 #define TIME_STROKE_WIDTH 7

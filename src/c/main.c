@@ -101,7 +101,36 @@ static void draw_section(GContext* ctx, GRect bounds, uint8_t value, uint8_t sec
 }
 
 static void draw_numeral(GContext* ctx, GRect bounds, numeral_t value) {
-    draw_section(ctx, bounds, 5, 0);
+    int16_t const size = bounds.size.w / 2;
+
+    // draw the middle line
+    graphics_draw_line(
+        ctx,
+        GPoint(bounds.origin.x + size, bounds.origin.y),
+        GPoint(bounds.origin.x + size, bounds.origin.y + bounds.size.h)
+    );
+
+    // TODO:
+    //  handle gap <= 0 (either a square or a horizontal rectangle)
+    //  maybe do it with a configurable `min_gap`?
+    int16_t const gap = bounds.size.h - size * 2;
+    int16_t const bottom_y = gap + size;
+
+    GPoint const sections_origins[4] = {
+        GPoint(bounds.origin.x + size,  bounds.origin.y),
+        GPoint(bounds.origin.x,         bounds.origin.y),
+        GPoint(bounds.origin.x + size,  bounds.origin.y + bottom_y),
+        GPoint(bounds.origin.x,         bounds.origin.y + bottom_y),
+    };
+
+    for (uint8_t section = 0; section < 4; section++, value /= 10) {
+        GRect const section_bounds = {
+            .origin = sections_origins[section],
+            .size = {size, size}
+        };
+
+        draw_section(ctx, section_bounds, value % 10, section);
+    }
 }
 
 static void draw_time(Layer* layer, GContext* ctx) {
@@ -109,14 +138,16 @@ static void draw_time(Layer* layer, GContext* ctx) {
     struct tm* local_now = localtime(&now_unix);
 
     GRect bounds = layer_get_bounds(layer);
+    int16_t const padding = 15; // TODO: make configurable
 
-    // WARN: TEMPORARY; remove later
-        bounds.origin.y += (bounds.size.h - bounds.size.w) / 2;
-        bounds.size.h = bounds.size.w;
+    bounds.origin.x += padding;
+    bounds.origin.y += padding;
+    bounds.size.w -= padding * 2;
+    bounds.size.h -= padding * 2;
 
     // TODO: make configurable
     graphics_context_set_antialiased(ctx, false);
-    graphics_context_set_stroke_color(ctx, GColorRed);
+    graphics_context_set_stroke_color(ctx, GColorBlack);
     graphics_context_set_stroke_width(ctx, 5);
 
     numeral_t numeral = local_now->tm_min + local_now->tm_hour * 100;

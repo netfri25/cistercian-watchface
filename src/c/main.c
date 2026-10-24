@@ -245,6 +245,7 @@ static void draw_numeral(GContext* ctx, GRect bounds, numeral_t value) {
 }
 
 static void draw_time(Layer* layer, GContext* ctx) {
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "draw time");
     GRect const bounds = layer_get_bounds(layer);
 
     time_t const unix_now = time(NULL);
@@ -259,6 +260,7 @@ static void draw_time(Layer* layer, GContext* ctx) {
 }
 
 static void draw_date(Layer* layer, GContext* ctx) {
+    APP_LOG(APP_LOG_LEVEL_DEBUG, "draw date");
     GRect const bounds = layer_get_bounds(layer);
 
     time_t const unix_now = time(NULL);
@@ -278,11 +280,8 @@ static void draw_date(Layer* layer, GContext* ctx) {
     draw_numeral(ctx, bounds, numeral);
 }
 
-static void minute_tick_handler(struct tm* tick_time, TimeUnits units_changed) {
+static void tick_handler(struct tm* tick_time, TimeUnits units_changed) {
     layer_mark_dirty(s_time_layer);
-}
-
-static void day_tick_handler(struct tm* tick_time, TimeUnits units_changed) {
     layer_mark_dirty(s_date_layer);
 }
 
@@ -330,8 +329,7 @@ static void init(void) {
     });
     window_stack_push(s_window, true);
 
-    tick_timer_service_subscribe(MINUTE_UNIT, minute_tick_handler);
-    tick_timer_service_subscribe(DAY_UNIT, day_tick_handler);
+    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
 
     app_message_register_inbox_received(inbox_received_callback);
     app_message_register_inbox_dropped(inbox_dropped_callback);

@@ -19,7 +19,7 @@ typedef struct Segment {
 #define SEGMENT_DOWNWARDS   ((Segment) { 0, 3 })
 #define SEGMENT_UPWARDS     ((Segment) { 2, 1 })
 
-static Window *s_window;
+static Window* s_window;
 static Layer* s_time_layer;
 
 // using the top right (section 0) as the reference point
@@ -158,8 +158,8 @@ static void tick_handler(struct tm* tick_time, TimeUnits units_changed) {
     layer_mark_dirty(s_time_layer);
 }
 
-static void window_load(Window *window) {
-    Layer *window_layer = window_get_root_layer(window);
+static void window_load(Window* window) {
+    Layer* window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
 
     s_time_layer = layer_create(bounds);
@@ -167,7 +167,7 @@ static void window_load(Window *window) {
     layer_add_child(window_layer, s_time_layer);
 }
 
-static void window_unload(Window *window) {
+static void window_unload(Window* window) {
     layer_destroy(s_time_layer);
 }
 

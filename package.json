@@ -1,0 +1,24 @@
+{
+  "name": "cistercian-time-and-date",
+  "author": "netfri",
+  "version": "1.0.0",
+  "keywords": ["cistercian", "monk", "cipher", "watchface"],
+  "private": true,
+  "dependencies": {},
+  "pebble": {
+    "displayName": "cistercian-time-and-date",
+    "uuid": "ed701523-50c9-4f1c-b078-46b4588a6f12",
+    "sdkVersion": "3",
+    "enableMultiJS": true,
+    "targetPlatforms": [
+      "emery"
+    ],
+    "watchapp": {
+      "watchface": true
+    },
+    "messageKeys": [],
+    "resources": {
+      "media": []
+    }
+  }
+}

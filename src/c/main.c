@@ -47,6 +47,7 @@ static ClaySettings settings;
 static void default_settings(void) {
     settings.AntiAliasing = true;
     settings.ShowDate = true;
+    settings.DateFormat = DateFormat_MMDD;
     settings.Padding = 25;
     settings.TimeStrokeWidth = 7;
     settings.DateStrokeWidth = 7;

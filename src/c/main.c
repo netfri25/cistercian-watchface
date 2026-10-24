@@ -25,9 +25,15 @@ static Window* s_window;
 static Layer* s_time_layer;
 static Layer* s_date_layer;
 
+typedef enum DateFormat {
+    DateFormat_MMDD = 0,
+    DateFormat_DDMM = 1,
+} DateFormat;
+
 typedef struct ClaySettings {
     bool AntiAliasing;
     bool ShowDate;
+    DateFormat DateFormat;
     int32_t Padding;
     int32_t TimeStrokeWidth;
     int32_t DateStrokeWidth;
@@ -95,6 +101,7 @@ static void update_settings(DictionaryIterator* iterator) {
 
     FIELD(AntiAliasing, field->value->int32 == 1);
     FIELD(ShowDate, field->value->int32 == 1);
+    FIELD(DateFormat, field->value->int32);
     FIELD(Padding, field->value->int32);
     FIELD(TimeStrokeWidth, field->value->int32);
     FIELD(DateStrokeWidth, field->value->int32);
@@ -261,7 +268,13 @@ static void draw_date(Layer* layer, GContext* ctx) {
     graphics_context_set_stroke_color(ctx, settings.StrokeColor);
     graphics_context_set_stroke_width(ctx, settings.DateStrokeWidth);
 
-    numeral_t const numeral = local_now->tm_mday + (local_now->tm_mon + 1) * 100;
+    numeral_t numeral;
+    if (settings.DateFormat == DateFormat_MMDD) {
+        numeral = local_now->tm_mday + (local_now->tm_mon + 1) * 100;
+    } else {
+        numeral = (local_now->tm_mon + 1) + local_now->tm_mday * 100;
+    }
+
     draw_numeral(ctx, bounds, numeral);
 }
 

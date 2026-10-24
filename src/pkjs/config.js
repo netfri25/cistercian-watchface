@@ -44,6 +44,23 @@ module.exports = [
                 "label": "Show Date"
             },
             {
+                "type": "select",
+                "messageKey": "DateFormat",
+                "label": "Date Format",
+                "defaultValue": "MM/DD",
+                "serializeValueAs": "integer",
+                "options": [
+                    {
+                        "label": "MM/DD",
+                        "value": 0,
+                    },
+                    {
+                        "label": "DD/MM",
+                        "value": 1,
+                    }
+                ]
+            },
+            {
                 "type": "input",
                 "messageKey": "Padding",
                 "defaultValue": 25,

@@ -31,7 +31,8 @@
       "DateStrokeWidth",
       "DateScalePercent",
       "StrokeColor",
-      "BackgroundColor"
+      "BackgroundColor",
+      "DateFormat"
     ],
     "resources": {
       "media": []

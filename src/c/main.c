@@ -1,26 +1,45 @@
 #include <pebble.h>
 
-#define BACKGROUND_COLOR GColorDarkGray
+// TODO: make configurable
+#define BACKGROUND_COLOR GColorLightGray
+#define STROKE_COLOR GColorBlack
+#define PADDING 25
+#define TIME_STROKE_WIDTH 7
+#define DATE_STROKE_WIDTH TIME_STROKE_WIDTH
+#define ANTIALIASING true
+#define DATE_HIDDEN false
+#define DATE_SCALE_PERCENT 28
 
 typedef uint32_t numeral_t;
 
 // corners are in the order:
-//  0 1
-//  2 3
+//  | 0 1
+//  | 2 3
+//
+// the line on the left is the middle line of the numeral
 typedef struct Segment {
     uint8_t corner1;
     uint8_t corner2;
 } Segment;
 
-#define SEGMENT_TOP         ((Segment) { 0, 1 })
+#define SEGMENT_TOP         ((Segment) { 1, 0 })
 #define SEGMENT_RIGHT       ((Segment) { 1, 3 })
 #define SEGMENT_BOTTOM      ((Segment) { 3, 2 })
 #define SEGMENT_LEFT        ((Segment) { 2, 0 })
-#define SEGMENT_DOWNWARDS   ((Segment) { 0, 3 })
+#define SEGMENT_DOWNWARDS   ((Segment) { 3, 0 })
 #define SEGMENT_UPWARDS     ((Segment) { 2, 1 })
 
 static Window* s_window;
 static Layer* s_time_layer;
+static Layer* s_date_layer;
+
+static GRect pad_rect(GRect rect, int16_t padding) {
+    rect.size.w -= padding * 2;
+    rect.size.h -= padding * 2;
+    rect.origin.x += padding;
+    rect.origin.y += padding;
+    return rect;
+}
 
 // using the top right (section 0) as the reference point
 static Segment normalize_segment_by_section(Segment segment, uint8_t section) {
@@ -134,41 +153,73 @@ static void draw_numeral(GContext* ctx, GRect bounds, numeral_t value) {
 }
 
 static void draw_time(Layer* layer, GContext* ctx) {
-    time_t now_unix = time(NULL);
-    struct tm* local_now = localtime(&now_unix);
+    GRect const bounds = layer_get_bounds(layer);
 
-    GRect bounds = layer_get_bounds(layer);
-    int16_t const padding = 25; // TODO: make configurable
+    time_t const unix_now = time(NULL);
+    struct tm* const local_now = localtime(&unix_now);
 
-    bounds.origin.x += padding;
-    bounds.origin.y += padding;
-    bounds.size.w -= padding * 2;
-    bounds.size.h -= padding * 2;
+    graphics_context_set_antialiased(ctx, ANTIALIASING);
+    graphics_context_set_stroke_color(ctx, STROKE_COLOR);
+    graphics_context_set_stroke_width(ctx, TIME_STROKE_WIDTH);
 
-    // TODO: make configurable
-    graphics_context_set_antialiased(ctx, true);
-    graphics_context_set_stroke_color(ctx, GColorBlack);
-    graphics_context_set_stroke_width(ctx, 6);
-
-    numeral_t numeral = local_now->tm_min + local_now->tm_hour * 100;
+    numeral_t const numeral = local_now->tm_min + local_now->tm_hour * 100;
     draw_numeral(ctx, bounds, numeral);
 }
 
-static void tick_handler(struct tm* tick_time, TimeUnits units_changed) {
+static void draw_date(Layer* layer, GContext* ctx) {
+    GRect const bounds = layer_get_bounds(layer);
+
+    time_t const unix_now = time(NULL);
+    struct tm* const local_now = localtime(&unix_now);
+
+    graphics_context_set_antialiased(ctx, ANTIALIASING);
+    graphics_context_set_stroke_color(ctx, STROKE_COLOR);
+    graphics_context_set_stroke_width(ctx, DATE_STROKE_WIDTH);
+
+    numeral_t const numeral = local_now->tm_mday + (local_now->tm_mon + 1) * 100;
+    draw_numeral(ctx, bounds, numeral);
+}
+
+static void minute_tick_handler(struct tm* tick_time, TimeUnits units_changed) {
     layer_mark_dirty(s_time_layer);
+}
+
+static void day_tick_handler(struct tm* tick_time, TimeUnits units_changed) {
+    layer_mark_dirty(s_date_layer);
+}
+
+static GRect calculate_date_bounds(GRect time_bounds) {
+    int16_t const section_size = time_bounds.size.w / 2;
+
+    int16_t const w = time_bounds.size.w * DATE_SCALE_PERCENT / 100;
+    int16_t const h = time_bounds.size.h * DATE_SCALE_PERCENT / 100;
+    int16_t const x = time_bounds.origin.x + (section_size - w) / 2;
+    int16_t const y = time_bounds.origin.y + (section_size - h) / 2 + time_bounds.size.h - section_size;
+
+    return GRect(x, y, w, h);
 }
 
 static void window_load(Window* window) {
     Layer* window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
 
-    s_time_layer = layer_create(bounds);
+    GRect time_bounds = pad_rect(bounds, PADDING);
+    s_time_layer = layer_create(time_bounds);
     layer_set_update_proc(s_time_layer, draw_time);
+    layer_set_clips(s_time_layer, false);
     layer_add_child(window_layer, s_time_layer);
+
+    GRect date_bounds = calculate_date_bounds(time_bounds);
+    s_date_layer = layer_create(date_bounds);
+    layer_set_update_proc(s_date_layer, draw_date);
+    layer_set_clips(s_date_layer, false);
+    layer_set_hidden(s_date_layer, DATE_HIDDEN);
+    layer_add_child(window_layer, s_date_layer);
 }
 
 static void window_unload(Window* window) {
     layer_destroy(s_time_layer);
+    layer_destroy(s_date_layer);
 }
 
 static void init(void) {
@@ -180,7 +231,8 @@ static void init(void) {
     });
     window_stack_push(s_window, true);
 
-    tick_timer_service_subscribe(MINUTE_UNIT, tick_handler);
+    tick_timer_service_subscribe(MINUTE_UNIT, minute_tick_handler);
+    tick_timer_service_subscribe(DAY_UNIT, day_tick_handler);
 }
 
 static void deinit(void) {

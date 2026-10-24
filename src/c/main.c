@@ -1,14 +1,6 @@
 #include <pebble.h>
 
-// TODO: make configurable
-#define BACKGROUND_COLOR GColorWhite
-#define STROKE_COLOR GColorBlack
-#define PADDING 25
-#define TIME_STROKE_WIDTH 7
-#define DATE_STROKE_WIDTH TIME_STROKE_WIDTH
-#define ANTIALIASING true
-#define DATE_HIDDEN false
-#define DATE_SCALE_PERCENT 28
+#define SETTINGS_KEY 1
 
 typedef uint32_t numeral_t;
 
@@ -32,6 +24,99 @@ typedef struct Segment {
 static Window* s_window;
 static Layer* s_time_layer;
 static Layer* s_date_layer;
+
+typedef struct ClaySettings {
+    bool AntiAliasing;
+    bool ShowDate;
+    int32_t Padding;
+    int32_t TimeStrokeWidth;
+    int32_t DateStrokeWidth;
+    int32_t DateScalePercent;
+    GColor StrokeColor;
+    GColor BackgroundColor;
+} ClaySettings;
+
+static ClaySettings settings;
+
+static void default_settings(void) {
+    settings.AntiAliasing = true;
+    settings.ShowDate = true;
+    settings.Padding = 25;
+    settings.TimeStrokeWidth = 7;
+    settings.DateStrokeWidth = 7;
+    settings.DateScalePercent = 28;
+    settings.StrokeColor = GColorBlack;
+    settings.BackgroundColor = GColorWhite;
+}
+
+static void load_settings(void) {
+    default_settings();
+    persist_read_data(SETTINGS_KEY, &settings, sizeof settings);
+}
+
+static void log_settings(void) {
+#define LOG_FIELD(name, fmt) \
+    APP_LOG(APP_LOG_LEVEL_INFO, "settings." #name ": " fmt, settings.name)
+
+    LOG_FIELD(AntiAliasing, "%d");
+    LOG_FIELD(ShowDate, "%d");
+    LOG_FIELD(Padding, "%d");
+    LOG_FIELD(TimeStrokeWidth, "%d");
+    LOG_FIELD(DateStrokeWidth, "%d");
+    LOG_FIELD(DateScalePercent, "%d");
+    LOG_FIELD(StrokeColor, "%02x");
+    LOG_FIELD(BackgroundColor, "%02x");
+#undef LOG_FIELD
+}
+
+static void save_settings(void) {
+    persist_write_data(SETTINGS_KEY, &settings, sizeof settings);
+}
+
+static void window_unload(Window* window);
+static void window_load(Window* window);
+
+static void apply_settings(void) {
+    window_unload(s_window);
+    window_load(s_window);
+}
+
+static void update_settings(DictionaryIterator* iterator) {
+    bool changed = false;
+
+#define FIELD(name, expr) \
+    do { \
+        Tuple* field = dict_find(iterator, MESSAGE_KEY_##name); \
+        if (field) { \
+            settings.name = (expr); \
+            changed = true; \
+        } \
+    } while (0)
+
+    FIELD(AntiAliasing, field->value->int32 == 1);
+    FIELD(ShowDate, field->value->int32 == 1);
+    FIELD(Padding, field->value->int32);
+    FIELD(TimeStrokeWidth, field->value->int32);
+    FIELD(DateStrokeWidth, field->value->int32);
+    FIELD(DateScalePercent, field->value->int32);
+    FIELD(StrokeColor, GColorFromHEX(field->value->int32));
+    FIELD(BackgroundColor, GColorFromHEX(field->value->int32));
+#undef FIELD
+
+    if (changed) {
+        save_settings();
+        apply_settings();
+        log_settings();
+    }
+}
+
+static void inbox_received_callback(DictionaryIterator* iterator, void* context) {
+    update_settings(iterator);
+}
+
+static void inbox_dropped_callback(AppMessageResult reason, void* context) {
+    APP_LOG(APP_LOG_LEVEL_INFO, "message dropped");
+}
 
 static GRect pad_rect(GRect rect, int16_t padding) {
     rect.size.w -= padding * 2;
@@ -158,9 +243,9 @@ static void draw_time(Layer* layer, GContext* ctx) {
     time_t const unix_now = time(NULL);
     struct tm* const local_now = localtime(&unix_now);
 
-    graphics_context_set_antialiased(ctx, ANTIALIASING);
-    graphics_context_set_stroke_color(ctx, STROKE_COLOR);
-    graphics_context_set_stroke_width(ctx, TIME_STROKE_WIDTH);
+    graphics_context_set_antialiased(ctx, settings.AntiAliasing);
+    graphics_context_set_stroke_color(ctx, settings.StrokeColor);
+    graphics_context_set_stroke_width(ctx, settings.TimeStrokeWidth);
 
     numeral_t const numeral = local_now->tm_min + local_now->tm_hour * 100;
     draw_numeral(ctx, bounds, numeral);
@@ -172,9 +257,9 @@ static void draw_date(Layer* layer, GContext* ctx) {
     time_t const unix_now = time(NULL);
     struct tm* const local_now = localtime(&unix_now);
 
-    graphics_context_set_antialiased(ctx, ANTIALIASING);
-    graphics_context_set_stroke_color(ctx, STROKE_COLOR);
-    graphics_context_set_stroke_width(ctx, DATE_STROKE_WIDTH);
+    graphics_context_set_antialiased(ctx, settings.AntiAliasing);
+    graphics_context_set_stroke_color(ctx, settings.StrokeColor);
+    graphics_context_set_stroke_width(ctx, settings.DateStrokeWidth);
 
     numeral_t const numeral = local_now->tm_mday + (local_now->tm_mon + 1) * 100;
     draw_numeral(ctx, bounds, numeral);
@@ -191,8 +276,8 @@ static void day_tick_handler(struct tm* tick_time, TimeUnits units_changed) {
 static GRect calculate_date_bounds(GRect time_bounds) {
     int16_t const section_size = time_bounds.size.w / 2;
 
-    int16_t const w = time_bounds.size.w * DATE_SCALE_PERCENT / 100;
-    int16_t const h = time_bounds.size.h * DATE_SCALE_PERCENT / 100;
+    int16_t const w = time_bounds.size.w * settings.DateScalePercent / 100;
+    int16_t const h = time_bounds.size.h * settings.DateScalePercent / 100;
     int16_t const x = time_bounds.origin.x + (section_size - w) / 2;
     int16_t const y = time_bounds.origin.y + (section_size - h) / 2 + time_bounds.size.h - section_size;
 
@@ -203,7 +288,7 @@ static void window_load(Window* window) {
     Layer* window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
 
-    GRect time_bounds = pad_rect(bounds, PADDING);
+    GRect time_bounds = pad_rect(bounds, settings.Padding);
     s_time_layer = layer_create(time_bounds);
     layer_set_update_proc(s_time_layer, draw_time);
     layer_set_clips(s_time_layer, false);
@@ -213,7 +298,7 @@ static void window_load(Window* window) {
     s_date_layer = layer_create(date_bounds);
     layer_set_update_proc(s_date_layer, draw_date);
     layer_set_clips(s_date_layer, false);
-    layer_set_hidden(s_date_layer, DATE_HIDDEN);
+    layer_set_hidden(s_date_layer, !settings.ShowDate);
     layer_add_child(window_layer, s_date_layer);
 }
 
@@ -223,8 +308,9 @@ static void window_unload(Window* window) {
 }
 
 static void init(void) {
+    load_settings();
     s_window = window_create();
-    window_set_background_color(s_window, BACKGROUND_COLOR);
+    window_set_background_color(s_window, settings.BackgroundColor);
     window_set_window_handlers(s_window, (WindowHandlers) {
         .load = window_load,
         .unload = window_unload,
@@ -233,6 +319,13 @@ static void init(void) {
 
     tick_timer_service_subscribe(MINUTE_UNIT, minute_tick_handler);
     tick_timer_service_subscribe(DAY_UNIT, day_tick_handler);
+
+    app_message_register_inbox_received(inbox_received_callback);
+    app_message_register_inbox_dropped(inbox_dropped_callback);
+
+    const int inbox_size = 128;
+    const int outbox_size = 0;
+    app_message_open(inbox_size, outbox_size);
 }
 
 static void deinit(void) {

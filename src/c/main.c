@@ -298,6 +298,7 @@ static GRect calculate_date_bounds(GRect time_bounds) {
 }
 
 static void window_load(Window* window) {
+    window_set_background_color(s_window, settings.BackgroundColor);
     Layer* window_layer = window_get_root_layer(window);
     GRect bounds = layer_get_bounds(window_layer);
 
@@ -323,7 +324,6 @@ static void window_unload(Window* window) {
 static void init(void) {
     load_settings();
     s_window = window_create();
-    window_set_background_color(s_window, settings.BackgroundColor);
     window_set_window_handlers(s_window, (WindowHandlers) {
         .load = window_load,
         .unload = window_unload,
